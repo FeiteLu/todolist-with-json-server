@@ -22,25 +22,126 @@
         console.log(data);
     }); */
 
+
+function myFetch(url, method, body = '', headers = '') {
+
+    const xhr = new XMLHttpRequest();
+    return new Promise((resolve, reject) => {
+        switch (method) {
+            case "GET":
+                xhr.open("GET", url);
+                xhr.responseType = 'json';
+                xhr.onreadystatechange = function () {
+                    if (this.readyState == 4 && this.status == 200) {
+                        // Typical action to be performed when the document is ready:
+                        resolve(xhr.response);
+
+                    }
+                };
+
+                xhr.send();
+                break;
+
+
+
+            case "POST":
+                xhr.open("POST", url, true);
+                xhr.setRequestHeader(Object.keys(headers)[0], Object.values(headers)[0]);
+                xhr.responseType = 'json';
+                xhr.onreadystatechange = function () {
+                    if (this.readyState == 4 && this.status == 200) {
+                        // Typical action to be performed when the document is ready:
+                        resolve(xhr.response);
+
+                    }
+                };
+
+                xhr.send(body);
+
+                break;
+
+
+            case "DELETE":
+                xhr.open("DELETE", url, true);
+                xhr.responseType = 'json';
+                xhr.onreadystatechange = function () {
+                    if (this.readyState == 4 && this.status == 200) {
+                        // Typical action to be performed when the document is ready:
+                        resolve(xhr.response);
+                    }
+                };
+
+                xhr.send();
+
+                break;
+
+            case "PATCH":
+                xhr.open("PATCH", url, true);
+                xhr.setRequestHeader(Object.keys(headers)[0], Object.values(headers)[0]);
+                xhr.responseType = 'json';
+                xhr.onreadystatechange = function () {
+                    if (this.readyState == 4 && this.status == 200) {
+                        // Typical action to be performed when the document is ready:
+                        resolve(xhr.response);
+
+                    }
+                };
+
+                xhr.send(body);
+
+                break;
+
+
+            default:
+                xhr.open("GET", url);
+                xhr.responseType = 'json';
+                xhr.onreadystatechange = function () {
+                    if (this.readyState == 4 && this.status == 200) {
+                        // Typical action to be performed when the document is ready:
+                        resolve(xhr.response);
+                    }
+                };
+
+                xhr.send();
+
+                break;
+
+
+        }
+    })
+
+
+
+
+}
+
 const APIs = (() => {
     const createTodo = (newTodo) => {
-        return fetch("http://localhost:3000/todos", {
-            method: "POST",
-            body: JSON.stringify(newTodo),
-            headers: { "Content-Type": "application/json" },
-        }).then((res) => res.json());
+        return myFetch("http://localhost:3000/todos", "POST", JSON.stringify(newTodo), { "Content-Type": "application/json" })
+            .then((res) => res);
+
+
     };
 
     const deleteTodo = (id) => {
-        return fetch("http://localhost:3000/todos/" + id, {
-            method: "DELETE",
-        }).then((res) => res.json());
+        // return fetch("http://localhost:3000/todos/" + id, {
+        //     method: "DELETE",
+        // }).then((res) => res.json());
+        return myFetch("http://localhost:3000/todos/" + id, "DELETE")
+            .then((res) => res);
+
     };
 
     const getTodos = () => {
-        return fetch("http://localhost:3000/todos").then((res) => res.json());
+        return myFetch("http://localhost:3000/todos", "GET").then((res) => res);
+
     };
-    return { createTodo, deleteTodo, getTodos };
+
+    const updateTodo = (newTodo, id) => {
+        return myFetch("http://localhost:3000/todos/" + id, "PATCH", JSON.stringify(newTodo), { "Content-Type": "application/json" })
+            .then((res) => res);
+    }
+    return { createTodo, deleteTodo, getTodos, updateTodo };
 })();
 
 //IIFE
@@ -63,7 +164,7 @@ const Model = (() => {
         }
         set todos(newTodos) {
             // reassign value
-            console.log("setter function");
+            // console.log("setter function");
             this.#todos = newTodos;
             this.#onChange?.(); // rendering
         }
@@ -73,12 +174,13 @@ const Model = (() => {
             this.#onChange = callback;
         }
     }
-    const { getTodos, createTodo, deleteTodo } = APIs;
+    const { getTodos, createTodo, deleteTodo, updateTodo } = APIs;
     return {
         State,
         getTodos,
         createTodo,
         deleteTodo,
+        updateTodo
     };
 })();
 /* 
@@ -95,27 +197,59 @@ const Model = (() => {
 
 */
 const View = (() => {
-    const todolistEl = document.querySelector(".todo-list");
+    const pendingEl = document.querySelector(".pending-tasks");
+    const completedEl = document.querySelector(".completed-tasks")
     const submitBtnEl = document.querySelector(".submit-btn");
+    const editBtnEl = document.querySelector(".edit-btn");
+    const moveBtnEl = document.querySelector(".move-btn");
     const inputEl = document.querySelector(".input");
 
     const renderTodos = (todos) => {
-        let todosTemplate = "";
-        todos.forEach((todo) => {
-            const liTemplate = `<li><span>${todo.content}</span><button class="delete-btn" id="${todo.id}">delete</button></li>`;
-            todosTemplate += liTemplate;
+        let todosPending = "";
+        let todosCompleted = ""
+
+        const todosP = todos.filter((todo) => {
+            return !todo.completed;
         });
-        if (todos.length === 0) {
-            todosTemplate = "<h4>no task to display!</h4>";
+        const todosC = todos.filter((todo) => {
+            return todo.completed;
+        });
+
+        todosP.forEach((todo) => {
+            let liTemplate = `<li><span>${todo.content}</span>
+            <button class="edit-btn" id="${todo.id}">edit</button>
+            <button class="delete-btn" id="${todo.id}">delete</button>
+            <button class="move-btn" id="${todo.id}">move</button>
+            </li>`;
+            todosPending += liTemplate;
+
+        });
+        todosC.forEach((todo) => {
+            let liTemplate = `<li><span>${todo.content}</span>
+            <button class="edit-btn" id="${todo.id}">edit</button>
+            <button class="delete-btn" id="${todo.id}">delete</button>
+            <button class="move-btn" id="${todo.id}">move</button>
+            </li>`;
+            todosCompleted += liTemplate;
+
+        });
+        if (todosP.length === 0) {
+            todosPending = "<h4>no task to display!</h4>";
+
         }
-        todolistEl.innerHTML = todosTemplate;
+        if (todosC.length === 0) {
+            todosCompleted = "<h4>no task to display!</h4>";
+        }
+
+        pendingEl.innerHTML = todosPending;
+        completedEl.innerHTML = todosCompleted;
     };
 
     const clearInput = () => {
         inputEl.value = "";
     };
 
-    return { renderTodos, submitBtnEl, inputEl, clearInput, todolistEl };
+    return { renderTodos, submitBtnEl, inputEl, clearInput, pendingEl };
 })();
 
 const Controller = ((view, model) => {
@@ -135,12 +269,26 @@ const Controller = ((view, model) => {
                 3. update view
             */
             const inputValue = view.inputEl.value;
-            model.createTodo({ content: inputValue }).then((data) => {
+            model.createTodo({ content: inputValue, pending: true }).then((data) => {
                 state.todos = [data, ...state.todos];
                 view.clearInput();
             });
         });
     };
+
+    const handleEdit = () => {
+        view.pendingEl.addEventListener("click", (event) => {
+            if (event.target.className === "edit-btn") {
+                const id = event.target.id;
+
+
+            }
+        })
+    }
+
+    const handleMove = () => {
+
+    }
 
     const handleDelete = () => {
         //event bubbling
@@ -149,7 +297,7 @@ const Controller = ((view, model) => {
             2. make delete request
             3. update view, remove
         */
-        view.todolistEl.addEventListener("click", (event) => {
+        view.pendingEl.addEventListener("click", (event) => {
             if (event.target.className === "delete-btn") {
                 const id = event.target.id;
                 console.log("id", typeof id);
