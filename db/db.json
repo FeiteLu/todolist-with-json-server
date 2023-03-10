@@ -1,12 +1,18 @@
 {
   "todos": [
     {
-      "content": "patch",
-      "id": 2,
-      "completed": false
+      "content": "add",
+      "pending": false,
+      "id": 1,
+      "completed": true
     },
     {
-      "content": "adsa",
+      "content": "add2",
+      "completed": false,
+      "id": 2
+    },
+    {
+      "content": "add3",
       "completed": false,
       "id": 3
     }

@@ -5,28 +5,25 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css" />
     <title>Document</title>
 </head>
 
 <body>
     <div class="app">
+        <h1>TodoList</h1>
         <div class="form">
-            <input class="input" /><button class="submit-btn">
-                submit
-            </button>
+            <input class="input" /><button class="submit-btn">submit</button>
         </div>
-        <div class=todo-list>
-            <div class='list'>
-                <h3>Pending Tasks</h2>
-                    <ul class="pending-tasks"></ul>
+        <div class="todo-lists__container">
+            <div class="todo-list__container">
+                <h3>Pending Tasks</h3>
+                <ul class="todo-list todo-list--pending"></ul>
             </div>
-            <div class="list">
-                <h3>Completed Tasks</h2>
-                    <ul class="completed-tasks"></ul>
+            <div class="todo-list__container">
+                <h3>Completed Tasks</h3>
+                <ul class="todo-list todo-list--completed"></ul>
             </div>
-
-
         </div>
     </div>
 

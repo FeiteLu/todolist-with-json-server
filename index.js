@@ -1,6 +1,6 @@
 //console.log("hello world")
 
-/* 
+/*
   client side
     template: static template
     logic(js): MVC(model, view, controller): used to server side technology, single page application
@@ -22,136 +22,55 @@
         console.log(data);
     }); */
 
-
-function myFetch(url, method, body = '', headers = '') {
-
-    const xhr = new XMLHttpRequest();
-    return new Promise((resolve, reject) => {
-        switch (method) {
-            case "GET":
-                xhr.open("GET", url);
-                xhr.responseType = 'json';
-                xhr.onreadystatechange = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        // Typical action to be performed when the document is ready:
-                        resolve(xhr.response);
-
-                    }
-                };
-
-                xhr.send();
-                break;
-
-
-
-            case "POST":
-                xhr.open("POST", url, true);
-                xhr.setRequestHeader(Object.keys(headers)[0], Object.values(headers)[0]);
-                xhr.responseType = 'json';
-                xhr.onreadystatechange = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        // Typical action to be performed when the document is ready:
-                        resolve(xhr.response);
-
-                    }
-                };
-
-                xhr.send(body);
-
-                break;
-
-
-            case "DELETE":
-                xhr.open("DELETE", url, true);
-                xhr.responseType = 'json';
-                xhr.onreadystatechange = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        // Typical action to be performed when the document is ready:
-                        resolve(xhr.response);
-                    }
-                };
-
-                xhr.send();
-
-                break;
-
-            case "PATCH":
-                xhr.open("PATCH", url, true);
-                xhr.setRequestHeader(Object.keys(headers)[0], Object.values(headers)[0]);
-                xhr.responseType = 'json';
-                xhr.onreadystatechange = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        // Typical action to be performed when the document is ready:
-                        resolve(xhr.response);
-
-                    }
-                };
-
-                xhr.send(body);
-
-                break;
-
-
-            default:
-                xhr.open("GET", url);
-                xhr.responseType = 'json';
-                xhr.onreadystatechange = function () {
-                    if (this.readyState == 4 && this.status == 200) {
-                        // Typical action to be performed when the document is ready:
-                        resolve(xhr.response);
-                    }
-                };
-
-                xhr.send();
-
-                break;
-
-
+function myFetch(url, options = {}) {
+    return new Promise((res, rej) => {
+        let xhr = new XMLHttpRequest();
+        xhr.open(options.method || "GET", url);
+        xhr.responseType = "json";
+        for (let headerName in options.headers) {
+            xhr.setRequestHeader(headerName, options.headers[headerName]);
         }
-    })
-
-
-
-
+        xhr.onload = () => {
+            res(xhr.response);
+        };
+        xhr.onerror = () => {
+            rej(new Error("myFetch failed"));
+        };
+        xhr.send(options.body);
+    });
 }
 
+// APIs
 const APIs = (() => {
     const createTodo = (newTodo) => {
-        return myFetch("http://localhost:3000/todos", "POST", JSON.stringify(newTodo), { "Content-Type": "application/json" })
-            .then((res) => res);
+        return myFetch("http://localhost:3000/todos", {
+            method: "POST",
+            body: JSON.stringify(newTodo),
+            headers: { "Content-Type": "application/json" },
+        });
+    };
 
-
+    const updateTodo = (id, newTodo) => {
+        return myFetch("http://localhost:3000/todos/" + id, {
+            method: "PATCH",
+            body: JSON.stringify(newTodo),
+            headers: { "Content-Type": "application/json" },
+        });
     };
 
     const deleteTodo = (id) => {
-        // return fetch("http://localhost:3000/todos/" + id, {
-        //     method: "DELETE",
-        // }).then((res) => res.json());
-        return myFetch("http://localhost:3000/todos/" + id, "DELETE")
-            .then((res) => res);
-
+        return myFetch("http://localhost:3000/todos/" + id, {
+            method: "DELETE",
+        });
     };
 
     const getTodos = () => {
-        return myFetch("http://localhost:3000/todos", "GET").then((res) => res);
-
+        return myFetch("http://localhost:3000/todos");
     };
-
-    const updateTodo = (newTodo, id) => {
-        return myFetch("http://localhost:3000/todos/" + id, "PATCH", JSON.stringify(newTodo), { "Content-Type": "application/json" })
-            .then((res) => res);
-    }
-    return { createTodo, deleteTodo, getTodos, updateTodo };
+    return { createTodo, updateTodo, deleteTodo, getTodos };
 })();
 
-//IIFE
-//todos
-/* 
-    hashMap: faster to search
-    array: easier to iterate, has order
-
-
-*/
+// model
 const Model = (() => {
     class State {
         #todos; //private field
@@ -164,7 +83,7 @@ const Model = (() => {
         }
         set todos(newTodos) {
             // reassign value
-            // console.log("setter function");
+            console.log("setter function");
             this.#todos = newTodos;
             this.#onChange?.(); // rendering
         }
@@ -180,78 +99,60 @@ const Model = (() => {
         getTodos,
         createTodo,
         deleteTodo,
-        updateTodo
+        updateTodo,
     };
 })();
-/* 
-    todos = [
-        {
-            id:1,
-            content:"eat lunch"
-        },
-        {
-            id:2,
-            content:"eat breakfast"
-        }
-    ]
 
-*/
+// view
 const View = (() => {
-    const pendingEl = document.querySelector(".pending-tasks");
-    const completedEl = document.querySelector(".completed-tasks")
+    const todolistpendingEl = document.querySelector(".todo-list--pending");
+    const todolistcompletedEl = document.querySelector(".todo-list--completed");
     const submitBtnEl = document.querySelector(".submit-btn");
-    const editBtnEl = document.querySelector(".edit-btn");
-    const moveBtnEl = document.querySelector(".move-btn");
     const inputEl = document.querySelector(".input");
 
     const renderTodos = (todos) => {
-        let todosPending = "";
-        let todosCompleted = ""
-
-        const todosP = todos.filter((todo) => {
+        let todospendingTemplate = "";
+        let todoscompletedTemplate = "";
+        const todospending = todos.filter((todo) => {
             return !todo.completed;
         });
-        const todosC = todos.filter((todo) => {
+        const todoscompleted = todos.filter((todo) => {
             return todo.completed;
         });
-
-        todosP.forEach((todo) => {
-            let liTemplate = `<li><span>${todo.content}</span>
-            <button class="edit-btn" id="${todo.id}">edit</button>
-            <button class="delete-btn" id="${todo.id}">delete</button>
-            <button class="move-btn" id="${todo.id}">move</button>
-            </li>`;
-            todosPending += liTemplate;
-
+        todospending.forEach((todo) => {
+            const liTemplate = `<li><span id="edit/${todo.id}">${todo.content}</span><button class="edit-btn" id="edit-btn/${todo.id}">edit</button><button class="delete-btn" id="delete-btn/${todo.id}">delete</button><button class="move-btn" id="move-btn/${todo.id}">move</button></li>`;
+            todospendingTemplate += liTemplate;
         });
-        todosC.forEach((todo) => {
-            let liTemplate = `<li><span>${todo.content}</span>
-            <button class="edit-btn" id="${todo.id}">edit</button>
-            <button class="delete-btn" id="${todo.id}">delete</button>
-            <button class="move-btn" id="${todo.id}">move</button>
-            </li>`;
-            todosCompleted += liTemplate;
-
+        todoscompleted.forEach((todo) => {
+            const liTemplate = `<li><span>${todo.content}</span><button class="edit-btn" id="edit-btn/${todo.id}">edit</button><button class="delete-btn" id="delete-btn/${todo.id}">delete</button><button class="move-btn" id="move-btn/${todo.id}">move</button></li>`;
+            todoscompletedTemplate += liTemplate;
         });
-        if (todosP.length === 0) {
-            todosPending = "<h4>no task to display!</h4>";
 
+        if (todospending.length === 0) {
+            todospendingTemplate = "<h4>no task to display!</h4>";
         }
-        if (todosC.length === 0) {
-            todosCompleted = "<h4>no task to display!</h4>";
+        if (todoscompleted.length === 0) {
+            todoscompletedTemplate = "<h4>no task to display!</h4>";
         }
-
-        pendingEl.innerHTML = todosPending;
-        completedEl.innerHTML = todosCompleted;
+        todolistpendingEl.innerHTML = todospendingTemplate;
+        todolistcompletedEl.innerHTML = todoscompletedTemplate;
     };
 
     const clearInput = () => {
         inputEl.value = "";
     };
 
-    return { renderTodos, submitBtnEl, inputEl, clearInput, pendingEl };
+    return {
+        renderTodos,
+        submitBtnEl,
+        inputEl,
+        clearInput,
+        todolistpendingEl,
+        todolistcompletedEl,
+    };
 })();
 
+// controller
 const Controller = ((view, model) => {
     const state = new model.State();
     const init = () => {
@@ -263,47 +164,94 @@ const Controller = ((view, model) => {
 
     const handleSubmit = () => {
         view.submitBtnEl.addEventListener("click", (event) => {
-            /* 
-                1. read the value from input
-                2. post request
-                3. update view
-            */
             const inputValue = view.inputEl.value;
-            model.createTodo({ content: inputValue, pending: true }).then((data) => {
-                state.todos = [data, ...state.todos];
-                view.clearInput();
-            });
+            model
+                .createTodo({ content: inputValue, completed: false })
+                .then((data) => {
+                    state.todos = [data, ...state.todos];
+                    view.clearInput();
+                });
+        });
+    };
+
+    const handleDelete = () => {
+        view.todolistpendingEl.addEventListener("click", (event) => {
+            if (event.target.className === "delete-btn") {
+                const id = event.target.id.split("/")[1];
+                model.deleteTodo(+id).then((data) => {
+                    state.todos = state.todos.filter((todo) => todo.id !== +id);
+                });
+            }
+        });
+
+        view.todolistcompletedEl.addEventListener("click", (event) => {
+            if (event.target.className === "delete-btn") {
+                const id = event.target.id.split("/")[1];
+                model.deleteTodo(+id).then((data) => {
+                    state.todos = state.todos.filter((todo) => todo.id !== +id);
+                });
+            }
+        });
+    };
+
+    const handleMove = () => {
+        view.todolistpendingEl.addEventListener("click", (event) => {
+            if (event.target.className === "move-btn") {
+                const id = event.target.id.split("/")[1];
+                model.updateTodo(+id, { completed: true }).then(() => {
+                    state.todos.forEach((todo) => {
+                        if (+todo.id === +id) {
+                            todo.completed = true;
+                        }
+                    });
+                    state.todos = [...state.todos];
+                });
+            }
+        });
+        view.todolistcompletedEl.addEventListener("click", (event) => {
+            if (event.target.className === "move-btn") {
+                const id = event.target.id.split("/")[1];
+                model.updateTodo(+id, { completed: false }).then(() => {
+                    state.todos.forEach((todo) => {
+                        if (+todo.id === +id) {
+                            todo.completed = false;
+                        }
+                    });
+                    state.todos = [...state.todos];
+                });
+            }
         });
     };
 
     const handleEdit = () => {
-        view.pendingEl.addEventListener("click", (event) => {
+        view.todolistpendingEl.addEventListener("click", (event) => {
             if (event.target.className === "edit-btn") {
-                const id = event.target.id;
-
-
+                const id = event.target.id.split("/")[1];
+                const spanEl = event.target.parentElement.firstChild;
+                if (spanEl.contentEditable === "true") {
+                    model.updateTodo(+id, { content: spanEl.innerHTML }).then(() => {
+                        spanEl.contentEditable = "false";
+                        spanEl.style.backgroundColor = "#e6e2d3";
+                    });
+                } else {
+                    spanEl.contentEditable = "true";
+                    spanEl.style.backgroundColor = "white";
+                }
             }
-        })
-    }
-
-    const handleMove = () => {
-
-    }
-
-    const handleDelete = () => {
-        //event bubbling
-        /* 
-            1. get id
-            2. make delete request
-            3. update view, remove
-        */
-        view.pendingEl.addEventListener("click", (event) => {
-            if (event.target.className === "delete-btn") {
-                const id = event.target.id;
-                console.log("id", typeof id);
-                model.deleteTodo(+id).then((data) => {
-                    state.todos = state.todos.filter((todo) => todo.id !== +id);
-                });
+        });
+        view.todolistcompletedEl.addEventListener("click", (event) => {
+            if (event.target.className === "edit-btn") {
+                const id = event.target.id.split("/")[1];
+                const spanEl = event.target.parentElement.firstChild;
+                if (spanEl.contentEditable === "true") {
+                    model.updateTodo(+id, { content: spanEl.innerHTML }).then(() => {
+                        spanEl.contentEditable = "false";
+                        spanEl.style.backgroundColor = "#e6e2d3";
+                    });
+                } else {
+                    spanEl.contentEditable = "true";
+                    spanEl.style.backgroundColor = "white";
+                }
             }
         });
     };
@@ -312,6 +260,8 @@ const Controller = ((view, model) => {
         init();
         handleSubmit();
         handleDelete();
+        handleMove();
+        handleEdit();
         state.subscribe(() => {
             view.renderTodos(state.todos);
         });
@@ -319,6 +269,6 @@ const Controller = ((view, model) => {
     return {
         bootstrap,
     };
-})(View, Model); //ViewModel
+})(View, Model);
 
 Controller.bootstrap();
